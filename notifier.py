@@ -1,74 +1,35 @@
-import os
-import time
-import requests
-from datetime import datetime, timedelta, timezone
+import os, time, requests
+from datetime import datetime
 
-# ────────────────────────────── 1. Variables d'environnement ──────────────────────────────
-EMAIL        = os.getenv("QFIELD_EMAIL")           # ex. vg@compagniedestelecomsetreseaux.com
-PASSWORD     = os.getenv("QFIELD_PASSWORD")        # ex. Compagnie42
-WEBHOOK_URL  = os.getenv("DISCORD_WEBHOOK_URL")    # URL complète du webhook Discord
-PROJECT_ID   = os.getenv("PROJECT_ID")             # ex. valentinctr/PR4-43  (organisation/slug)
-
-BASE_URL = "https://app.qfield.cloud"              # pas de slash final ici
+EMAIL       = os.getenv("QFIELD_EMAIL")
+PASSWORD    = os.getenv("QFIELD_PASSWORD")
+WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+PROJECT_ID  = os.getenv("PROJECT_ID")
+BASE_URL    = "https://app.qfield.cloud/api/v1"
 
 if not all([EMAIL, PASSWORD, WEBHOOK_URL, PROJECT_ID]):
-    raise SystemExit("❌ Variable d’environnement manquante.")
+    raise SystemExit("❌ Il manque une variable d’environnement")
 
-# ────────────────────────────── 2. Fonction de connexion ──────────────────────────────────
-def login() -> requests.Session:
-    """Retourne une session authentifiée sur QField Cloud SaaS."""
-    s = requests.Session()
-    print("🔑 Connexion…")
-    r = s.post(
-        f"{BASE_URL}/auth/login",
-        data={"login": EMAIL, "password": PASSWORD},
-        timeout=10,
-        allow_redirects=True    # suit la redirection après login
-    )
-    r.raise_for_status()
-    print("✅ Session ouverte.")
-    return s
+session = requests.Session()
+session.post(f"{BASE_URL}/sessions",
+             json={"login":EMAIL, "password":PASSWORD},
+             timeout=10).raise_for_status()
 
-session = login()  # Première authentification
-
-# ────────────────────────────── 3. Boucle de polling ──────────────────────────────────────
-last_check = datetime.now(timezone.utc) - timedelta(seconds=45)  # premier since rétroactif
-
+last_check = datetime.utcnow().isoformat()
 while True:
-    try:
-        since_iso = last_check.isoformat()
-        url = f"{BASE_URL}/api/v1/projects/{PROJECT_ID}/changes"
-        resp = session.get(url, params={"since": since_iso}, timeout=10)
-
-        # Si la session a expiré → on se relog et on réessaie au prochain tour
-        if resp.status_code == 401:
-            print("🔒 Session expirée – reconnexion…")
-            session = login()
-            time.sleep(5)
-            continue
-
-        resp.raise_for_status()
-        changes = resp.json().get("changes", [])
-
-        # Envoi sur Discord pour chaque changement détecté
-        for change in changes:
-            msg = (
-                f"🔔 **Changement détecté**\n"
-                f"• Feature : `{change['featureId']}`\n"
-                f"• Type    : {change['type']}\n"
-                f"• Par     : {change['user']['name']}\n"
-                f"• À       : {change['timestamp']}"
-            )
-            requests.post(WEBHOOK_URL, json={"content": msg}, timeout=5)
-
-        # Met à jour le curseur temporel
-        if changes:
-            last_check = datetime.fromisoformat(changes[-1]["timestamp"])
-        else:
-            last_check = datetime.now(timezone.utc)  # rien de nouveau : on repart de maintenant
-
-    except Exception as err:
-        # Affiche l’erreur et réessaie au cycle suivant
-        print("⚠️", err)
-
-    time.sleep(30)  # Intervalle de polling (30 s)
+    r = session.get(f"{BASE_URL}/projects/{PROJECT_ID}/changes",
+                    params={"since":last_check}, timeout=10)
+    r.raise_for_status()
+    changes = r.json().get("changes", [])
+    for c in changes:
+        msg = (
+            f"🔔 Changement détecté\n"
+            f"• Feature : `{c['featureId']}`\n"
+            f"• Type    : {c['type']}\n"
+            f"• Par     : {c['user']['name']}\n"
+            f"• À       : {c['timestamp']}"
+        )
+        session.post(WEBHOOK_URL, json={"content":msg}, timeout=5)
+    if changes:
+        last_check = changes[-1]["timestamp"]
+    time.sleep(30)
