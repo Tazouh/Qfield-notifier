@@ -1,13 +1,14 @@
-name: QField-Discord Polling
+name: QField→Discord Polling
 
 on:
   schedule:
-    - cron: '* * * * *'        # lancement chaque minute
+    - cron: '* * * * *'        # chaque minute
   workflow_dispatch:
 
 jobs:
   notify:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -18,7 +19,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install requests
+        run: pip install qfieldcloud-sdk requests
 
       - name: Run notifier
         env:
