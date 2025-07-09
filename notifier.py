@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 #EMAIL       = os.getenv("QFIELD_EMAIL")
 EMAIL        = "valentinctr"
 #PASSWORD    = os.getenv("QFIELD_PASSWORD")
-PASSWORD    = "Compagnie42
+PASSWORD    = "Compagnie42"
 WEBHOOK_URL = "https://discordapp.com/api/webhooks/1389636766545477776/YOXtsHBWaBVSz4noPEoB8DJKnz8ZBiSeTvdOTNtfP3MIVKmGhaFEfxCx_FNt7BxUEqrH"
 #PROJECT_ID  = os.getenv("PROJECT_ID")
 PROJECT_ID  = "valentinctr/PR4-43"   # Hardcoded pour tester
