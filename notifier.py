@@ -6,24 +6,24 @@ from qfieldcloud_sdk.sdk import Client
 EMAIL       = os.getenv("QFIELD_EMAIL")
 PASSWORD    = os.getenv("QFIELD_PASSWORD")
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-PROJECT_ID  = PROJECT_ID = "PR4-43"   # Remplace PR4-43 par ton slug ou ton ID numérique
-BASE_URL    = "https://app.qfield.cloud/api/v1/"   # ← Slash final ajouté
 
-# 2) Vérification
+# 2) PROJECT_ID codé en dur
+PROJECT_ID  = "PR4-43"   # ← remplace par ton slug ou ton ID numérique
+
+# 3) Base URL avec slash final
+BASE_URL    = "https://app.qfield.cloud/api/v1/"
+
+# 4) Vérification
 if not all([EMAIL, PASSWORD, WEBHOOK_URL, PROJECT_ID]):
     raise SystemExit("❌ Il manque une variable d’environnement")
 
-# 3) Authentification via le SDK
-client = Client(url=BASE_URL)  
+# 5) Authentification via le SDK
+client = Client(url=BASE_URL)
 client.login(EMAIL, PASSWORD)
-
-# On récupère la session configurée
 session = client.session
 
-# 4) Calcul du timestamp “since” : 2 minutes en arrière
+# 6) On récupère les changements des 2 dernières minutes
 since = (datetime.utcnow() - timedelta(minutes=2)).isoformat()
-
-# 5) Appel au endpoint des changements
 resp = session.get(
     f"{BASE_URL}projects/{PROJECT_ID}/changes",
     params={"since": since},
@@ -32,7 +32,7 @@ resp = session.get(
 resp.raise_for_status()
 changes = resp.json().get("changes", [])
 
-# 6) Pour chaque changement, on poste sur Discord
+# 7) Envoi sur Discord
 for c in changes:
     content = (
         f"🔔 **Changement détecté**\n"
