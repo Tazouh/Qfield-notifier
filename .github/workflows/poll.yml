@@ -22,8 +22,8 @@ jobs:
 
       - name: Run notifier
         env:
-          QFIELD_EMAIL:      ${{ secrets.QFIELD_EMAIL }}
-          QFIELD_PASSWORD:   ${{ secrets.QFIELD_PASSWORD }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.QISCORD_WEBHOOK_URL }}
-          PROJECT_ID:        ${{ secrets.PROJECT_ID }}
+          QFIELD_EMAIL:        ${{ secrets.QFIELD_EMAIL }}
+          QFIELD_PASSWORD:     ${{ secrets.QFIELD_PASSWORD }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PROJECT_ID:          ${{ secrets.PROJECT_ID }}
         run: python notifier.py
