@@ -2,8 +2,8 @@ name: QField→Discord Polling
 
 on:
   schedule:
-    - cron: '* * * * *'        # déclenchement chaque minute
-  workflow_dispatch:           # permet aussi un déclenchement manuel
+    - cron: '* * * * *'        # chaque minute
+  workflow_dispatch:
 
 jobs:
   notify:
