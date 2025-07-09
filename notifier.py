@@ -7,8 +7,10 @@ from datetime import datetime, timedelta, timezone
 EMAIL       = os.getenv("QFIELD_EMAIL")
 PASSWORD    = os.getenv("QFIELD_PASSWORD")
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-PROJECT_ID  = os.getenv("PROJECT_ID")  # ex. "valentinctr/PR4-43"
+#PROJECT_ID  = os.getenv("PROJECT_ID")
+PROJECT_ID  = "valentinctr/PR4-43"   # Hardcoded pour tester
 BASE_URL    = "https://app.qfield.cloud"
+
 
 # ─── 2) Vérification ────────────────────────────────────────
 for var, name in [(EMAIL,"QFIELD_EMAIL"), (PASSWORD,"QFIELD_PASSWORD"),
