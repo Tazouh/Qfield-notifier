@@ -1,21 +1,15 @@
-import os
 import time
 import requests
 from datetime import datetime, timedelta, timezone
 
-# ─── 1) Variables d’environnement ────────────────────────────
-#EMAIL       = os.getenv("QFIELD_EMAIL")
-LOGIN        = "valentinctr"
-#PASSWORD    = os.getenv("QFIELD_PASSWORD")
-PASSWORD    = "Compagnie42"
-WEBHOOK_URL = "https://discordapp.com/api/webhooks/1389636766545477776/YOXtsHBWaBVSz4noPEoB8DJKnz8ZBiSeTvdOTNtfP3MIVKmGhaFEfxCx_FNt7BxUEqrH"
-#PROJECT_ID  = os.getenv("PROJECT_ID")
-PROJECT_ID  = "valentinctr/PR4-43"   # Hardcoded pour tester
-BASE_URL    = "https://app.qfield.cloud"
-
+# ─── 1) Variables d’environnement (hard-codées pour test) ────────────────────────
+LOGIN       = "valentinctr"  # ton username QField Cloud
+PASSWORD    = "Compagnie42"  # ton mot de passe
+WEBHOOK_URL = "https://discordapp.com/api/webhooks/…"
+PROJECT_ID  = "valentinctr/PR4-43"  # organisation/slug exact
+BASE_URL    = "https://app.qfield.cloud"  # sans slash final
 
 # ─── 2) Vérification ────────────────────────────────────────
-
 for var, name in [
     (LOGIN, "LOGIN"),
     (PASSWORD, "PASSWORD"),
@@ -25,45 +19,29 @@ for var, name in [
     if not var:
         raise SystemExit(f"❌ La variable {name} est manquante")
 
-# ─── 3) Login avec debug HTTP ───────────────────────────────
+# ─── 3) Authentification via /auth/login ───────────────────────────────
 session = requests.Session()
 resp = session.post(
     f"{BASE_URL}/auth/login",
-    data={"login": EMAIL, "password": PASSWORD},
+    data={"login": LOGIN, "password": PASSWORD},
     timeout=10,
     allow_redirects=True
 )
+resp.raise_for_status()  # Doit renvoyer 200 OK
 
-# Debug HTTP
-print("▶ Login URL           :", resp.url)
-print("▶ Login status code   :", resp.status_code)
-print("▶ Login Content-Type  :", resp.headers.get("Content-Type", ""))
-print("▶ Login response (200 chars):", resp.text[:200].replace("\n"," "))
-print("────────────────────────────────────────────────────────────")
-
-resp.raise_for_status()
-
-# ─── 4) On calcule “since” ─────────────────────────────────
+# ─── 4) Calcul du “since” (2 min en arrière) ─────────────────────────────
 since = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
 
-# ─── 5) Récupération des changements ────────────────────────
-r2 = session.get(
+# ─── 5) Récupération des changements ─────────────────────────────────────
+r = session.get(
     f"{BASE_URL}/api/v1/projects/{PROJECT_ID}/changes",
     params={"since": since},
     timeout=10
 )
+r.raise_for_status()
+changes = r.json().get("changes", [])
 
-# Debug changes
-print("▶ Changes URL        :", r2.url)
-print("▶ Changes status code:", r2.status_code)
-print("▶ Changes Content-Type:", r2.headers.get("Content-Type",""))
-print("▶ Changes response (200 chars):", r2.text[:200].replace("\n"," "))
-print("────────────────────────────────────────────────────────────")
-
-r2.raise_for_status()
-changes = r2.json().get("changes", [])
-
-# ─── 6) Envoi sur Discord ───────────────────────────────────
+# ─── 6) Envoi sur Discord ────────────────────────────────────────────────
 for c in changes:
     msg = (
         f"🔔 **Changement détecté**\n"
@@ -73,3 +51,6 @@ for c in changes:
         f"• À       : {c['timestamp']}"
     )
     requests.post(WEBHOOK_URL, json={"content": msg}, timeout=5)
+
+# ─── 7) Pause de 30 s (utile en local ou sur Railway) ────────────────────
+time.sleep(30)
