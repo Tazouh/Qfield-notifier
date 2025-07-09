@@ -1,19 +1,18 @@
-import os, time, requests
-from datetime import datetime
+# 4) Démarrage de session et login
+session = requests.Session()
+resp = session.post(
+    f"{BASE_URL}/auth/login",
+    data={"login": EMAIL, "password": PASSWORD},
+    timeout=10,
+    allow_redirects=True
+)
 
-EMAIL       = os.getenv("QFIELD_EMAIL")
-PASSWORD    = os.getenv("QFIELD_PASSWORD")
-WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-PROJECT_ID  = os.getenv("PROJECT_ID")
-BASE_URL    = "https://app.qfield.cloud/api/v1"
+# === DEBUG HTTP 🚨
+print("▶ Login URL :", resp.url)
+print("▶ Login status code :", resp.status_code)
+print("▶ Login headers       :", resp.headers.get("Content-Type", ""))
+print("▶ Login response text :", resp.text[:200].replace("\n"," "))
+print("================================================================")
+# ===================================================================
 
-# === DEBUG : imprime l’état des variables ================================
-print("▶ QFIELD_EMAIL     :", EMAIL is not None, EMAIL or "")
-print("▶ QFIELD_PASSWORD  :", PASSWORD is not None, ("*" * len(PASSWORD)) if PASSWORD else "")
-print("▶ DISCORD_WEBHOOK_URL:", WEBHOOK_URL is not None, WEBHOOK_URL or "")
-print("▶ PROJECT_ID       :", PROJECT_ID is not None, PROJECT_ID or "")
-print("======================================================================")
-# ========================================================================
-
-if not all([EMAIL, PASSWORD, WEBHOOK_URL, PROJECT_ID]):
-    raise SystemExit("❌ Il manque une variable d’environnement")
+resp.raise_for_status()
