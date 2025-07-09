@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 EMAIL       = os.getenv("QFIELD_EMAIL")
 PASSWORD    = os.getenv("QFIELD_PASSWORD")
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-PROJECT_ID  = "valentinctr/PR4-43"   # ton organisation/slug
+PROJECT_ID  = os.getenv("PROJECT_ID")
 
 # --- 2) Base URL (sans slash final) --------------------
 BASE_URL    = "https://app.qfield.cloud/api/v1"
