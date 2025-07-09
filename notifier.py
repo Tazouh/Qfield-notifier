@@ -1,56 +1,61 @@
+# notifier_sdk.py
+import os
 import time
-import requests
 from datetime import datetime, timedelta, timezone
 
-# ─── 1) Identifiants et config (en clair pour test) ─────────────────
-LOGIN       = "valentinctr"
-PASSWORD    = "Compagnie42"
+from qfieldcloud_sdk.sdk import Client
+
+# ─── 1) Configuration “en clair” ─────────────────────────────────────────────
+LOGIN       = "valentinctr"    # votre username QField Cloud
+PASSWORD    = "Compagnie42"    # votre mot de passe QField Cloud
 WEBHOOK_URL = "https://discordapp.com/api/webhooks/…"
-PROJECT_ID  = "4a70a191-a077-4a71-9bcc-51c558ee8b84"  # ← l'UUID du projet
-BASE_URL    = "https://app.qfield.cloud"
+BASE_URL    = "https://app.qfield.cloud/"  # avec slash final
 
-# ─── 2) Vérifications ────────────────────────────────────────────────
-for var, name in [(LOGIN,"LOGIN"), (PASSWORD,"PASSWORD"),
-                  (WEBHOOK_URL,"WEBHOOK_URL"), (PROJECT_ID,"PROJECT_ID")]:
-    if not var:
-        raise SystemExit(f"❌ La variable {name} est manquante")
+# ─── 2) Connexion via le SDK ───────────────────────────────────────────────────
+print("🔑 Authentification via SDK…")
+client = Client(url=BASE_URL)
+client.login(LOGIN, PASSWORD)  # gère formulaire HTML & CSRF
+print("✅ Connecté en tant que", LOGIN)
 
-# ─── 3) Connexion ────────────────────────────────────────────────────
-session = requests.Session()
-resp = session.post(
-    f"{BASE_URL}/auth/login",
-    data={"login": LOGIN, "password": PASSWORD},
-    timeout=10,
-    allow_redirects=True
-)
-resp.raise_for_status()
+# ─── 3) Préparer le polling ───────────────────────────────────────────────────
+# On gardera en mémoire pour chaque projet son timestamp "since"
+last_checks = {}
+poll_interval = 30  # secondes
 
-# ─── 4) Boucle de polling (30 s) ──────────────────────────────────────
 while True:
-    since = (datetime.now(timezone.utc) - timedelta(seconds=45)).isoformat()
-    url = f"{BASE_URL}/api/v1/projects/{PROJECT_ID}/changes"
-    r = session.get(url, params={"since": since}, timeout=10)
+    # 3.1) Liste actualisée des projets
+    projects = client.projects.list()  # renvoie [{'id':uuid, 'name':slug}, …]
 
-    # reconnexion si nécessaire
-    if r.status_code == 401:
-        session.post(
-            f"{BASE_URL}/auth/login",
-            data={"login": LOGIN, "password": PASSWORD},
-            timeout=10,
-            allow_redirects=True
-        ).raise_for_status()
-        time.sleep(5)
-        continue
+    # initialisation du since si premier cycle
+    for proj in projects:
+        if proj["id"] not in last_checks:
+            last_checks[proj["id"]] = datetime.now(timezone.utc) - timedelta(minutes=2)
 
-    r.raise_for_status()
-    for c in r.json().get("changes", []):
-        msg = (
-            f"🔔 **Changement détecté**\n"
-            f"• Feature : `{c['featureId']}`\n"
-            f"• Type    : {c['type']}\n"
-            f"• Par     : {c['user']['name']}`\n"
-            f"• À       : {c['timestamp']}"
-        )
-        session.post(WEBHOOK_URL, json={"content": msg}, timeout=5)
+    # 3.2) Pour chaque projet, récupérer les changements
+    for proj in projects:
+        pid   = proj["id"]
+        name  = proj["name"]
+        since = last_checks[pid].isoformat()
 
-    time.sleep(30)
+        # le SDK fournit une méthode changes.list()
+        resp = client.changes.list(project_id=pid, since=since)
+        changes = resp.get("changes", [])
+
+        # 3.3) Poster chaque changement sur Discord
+        for c in changes:
+            content = (
+                f"🔔 **[{name}] Changement détecté**\n"
+                f"• Feature : `{c['featureId']}`\n"
+                f"• Type    : {c['type']}\n"
+                f"• Par     : {c['user']['name']}`\n"
+                f"• À       : {c['timestamp']}"
+            )
+            client.http.session.post(WEBHOOK_URL, json={"content": content}, timeout=5)
+
+        # 3.4) Mettre à jour le since
+        if changes:
+            last_ts = changes[-1]["timestamp"]
+            last_checks[pid] = datetime.fromisoformat(last_ts)
+
+    print(f"⏱️ Cycle terminé, attente {poll_interval}s…")
+    time.sleep(poll_interval)
