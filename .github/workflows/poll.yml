@@ -1,13 +1,14 @@
-name: QField-Discord Polling
+name: QField→Discord Polling
 
 on:
   schedule:
-    - cron: '* * * * *'        # ← ici, toutes les minutes
-  workflow_dispatch:
+    - cron: '* * * * *'        # déclenchement chaque minute
+  workflow_dispatch:           # permet aussi un déclenchement manuel
 
 jobs:
   notify:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
