@@ -7,8 +7,8 @@ EMAIL       = os.getenv("QFIELD_EMAIL")
 PASSWORD    = os.getenv("QFIELD_PASSWORD")
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
-# 2) PROJECT_ID codé en dur
-PROJECT_ID  = "PR4-43"   # ← remplace par ton slug ou ton ID numérique
+# 2) PROJECT_ID codé en dur (organisation/slug)
+PROJECT_ID  = "valentinctr/PR4-43"
 
 # 3) Base URL avec slash final
 BASE_URL    = "https://app.qfield.cloud/api/v1/"
@@ -41,4 +41,4 @@ for c in changes:
         f"• Par     : {c['user']['name']}\n"
         f"• À       : {c['timestamp']}"
     )
-    requests.post(WEBHOOK_URL, json={"content": content}, timeout=5)
+    session.post(WEBHOOK_URL, json={"content": content}, timeout=5)
