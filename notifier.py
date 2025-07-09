@@ -6,7 +6,7 @@ from qfieldcloud_sdk.sdk import Client
 EMAIL       = os.getenv("QFIELD_EMAIL")
 PASSWORD    = os.getenv("QFIELD_PASSWORD")
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-PROJECT_ID  = os.getenv("PROJECT_ID")
+PROJECT_ID  = PROJECT_ID = "PR4-43"   # Remplace PR4-43 par ton slug ou ton ID numérique
 BASE_URL    = "https://app.qfield.cloud/api/v1/"   # ← Slash final ajouté
 
 # 2) Vérification
