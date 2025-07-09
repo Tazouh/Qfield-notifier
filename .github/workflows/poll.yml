@@ -2,7 +2,7 @@ name: QField-Discord Polling
 
 on:
   schedule:
-    - cron: '* * * * *'
+    - cron: '* * * * *'        # toutes les minutes
   workflow_dispatch:
 
 jobs:
@@ -20,10 +20,10 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run notifier
+      - name: Run notifier once
         env:
           QFIELD_EMAIL:        ${{ secrets.QFIELD_EMAIL }}
           QFIELD_PASSWORD:     ${{ secrets.QFIELD_PASSWORD }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           PROJECT_ID:          ${{ secrets.PROJECT_ID }}
-        run: python notifier.py
+        run: python notifier_once.py
