@@ -1,55 +1,74 @@
 import os
+import time
 import requests
 from datetime import datetime, timedelta, timezone
 
-# 1) Variables d’environnement lues dans les secrets GitHub
-EMAIL        = os.getenv("QFIELD_EMAIL")            # ex. vg@compagniedestelecomsetreseaux.com
-PASSWORD     = os.getenv("QFIELD_PASSWORD")         # ex. Compagnie42
-WEBHOOK_URL  = os.getenv("DISCORD_WEBHOOK_URL")     # URL de ton webhook Discord
-PROJECT_ID   = os.getenv("PROJECT_ID")              # ex. valentinctr/PR4-43  (organisation/slug)
+# ────────────────────────────── 1. Variables d'environnement ──────────────────────────────
+EMAIL        = os.getenv("QFIELD_EMAIL")           # ex. vg@compagniedestelecomsetreseaux.com
+PASSWORD     = os.getenv("QFIELD_PASSWORD")        # ex. Compagnie42
+WEBHOOK_URL  = os.getenv("DISCORD_WEBHOOK_URL")    # URL complète du webhook Discord
+PROJECT_ID   = os.getenv("PROJECT_ID")             # ex. valentinctr/PR4-43  (organisation/slug)
 
-# 2) Base URL QField Cloud SaaS  (avec slash final)
-BASE_URL = "https://app.qfield.cloud/api/v1/"
+BASE_URL = "https://app.qfield.cloud"              # pas de slash final ici
 
-# 3) Vérification des variables
 if not all([EMAIL, PASSWORD, WEBHOOK_URL, PROJECT_ID]):
-    raise SystemExit("❌ Une ou plusieurs variables d’environnement sont manquantes")
+    raise SystemExit("❌ Variable d’environnement manquante.")
 
-# 4) Authentification → /sessions/  (note le slash final)
-session = requests.Session()
-resp = session.post(
-    f"{BASE_URL}sessions/",                # <- slash final obligatoire
-    json={"email": EMAIL, "password": PASSWORD},
-    timeout=10
-)
-resp.raise_for_status()
-
-token = resp.json().get("token")
-if not token:
-    raise SystemExit("❌ Impossible de récupérer le token JWT")
-
-# 5) Ajout du token Bearer pour les appels suivants
-session.headers.update({"Authorization": f"Bearer {token}"})
-
-# 6) Timestamp 'since' : 2 min en arrière (UTC conscient du fuseau)
-since = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
-
-# 7) Récupération des changements du projet
-changes_resp = session.get(
-    f"{BASE_URL}projects/{PROJECT_ID}/changes",
-    params={"since": since},
-    timeout=10
-)
-changes_resp.raise_for_status()
-changes = changes_resp.json().get("changes", [])
-
-# 8) Pour chaque changement, on poste un message Discord
-for c in changes:
-    message = (
-        f"🔔 **Changement détecté**\n"
-        f"• Feature : `{c['featureId']}`\n"
-        f"• Type    : {c['type']}\n"
-        f"• Par     : {c['user']['name']}\n"
-        f"• À       : {c['timestamp']}"
+# ────────────────────────────── 2. Fonction de connexion ──────────────────────────────────
+def login() -> requests.Session:
+    """Retourne une session authentifiée sur QField Cloud SaaS."""
+    s = requests.Session()
+    print("🔑 Connexion…")
+    r = s.post(
+        f"{BASE_URL}/auth/login",
+        data={"login": EMAIL, "password": PASSWORD},
+        timeout=10,
+        allow_redirects=True    # suit la redirection après login
     )
-    session.post(WEBHOOK_URL, json={"content": message}, timeout=5)
+    r.raise_for_status()
+    print("✅ Session ouverte.")
+    return s
+
+session = login()  # Première authentification
+
+# ────────────────────────────── 3. Boucle de polling ──────────────────────────────────────
+last_check = datetime.now(timezone.utc) - timedelta(seconds=45)  # premier since rétroactif
+
+while True:
+    try:
+        since_iso = last_check.isoformat()
+        url = f"{BASE_URL}/api/v1/projects/{PROJECT_ID}/changes"
+        resp = session.get(url, params={"since": since_iso}, timeout=10)
+
+        # Si la session a expiré → on se relog et on réessaie au prochain tour
+        if resp.status_code == 401:
+            print("🔒 Session expirée – reconnexion…")
+            session = login()
+            time.sleep(5)
+            continue
+
+        resp.raise_for_status()
+        changes = resp.json().get("changes", [])
+
+        # Envoi sur Discord pour chaque changement détecté
+        for change in changes:
+            msg = (
+                f"🔔 **Changement détecté**\n"
+                f"• Feature : `{change['featureId']}`\n"
+                f"• Type    : {change['type']}\n"
+                f"• Par     : {change['user']['name']}\n"
+                f"• À       : {change['timestamp']}"
+            )
+            requests.post(WEBHOOK_URL, json={"content": msg}, timeout=5)
+
+        # Met à jour le curseur temporel
+        if changes:
+            last_check = datetime.fromisoformat(changes[-1]["timestamp"])
+        else:
+            last_check = datetime.now(timezone.utc)  # rien de nouveau : on repart de maintenant
+
+    except Exception as err:
+        # Affiche l’erreur et réessaie au cycle suivant
+        print("⚠️", err)
+
+    time.sleep(30)  # Intervalle de polling (30 s)
