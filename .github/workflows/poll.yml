@@ -1,15 +1,15 @@
-name: QField-Discord Polling
+name: QField SDK → Discord Polling
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
-  workflow_dispatch:
+    - cron: '* * * * *'        # chaque minute
+  workflow_dispatch:           # bouton “Run workflow”
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
       - name: Setup Python
@@ -18,12 +18,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install requests
+        run: pip install qfieldcloud-sdk requests
 
       - name: Run notifier
-        env:
-          QFIELD_EMAIL:        ${{ secrets.QFIELD_EMAIL }}
-          QFIELD_PASSWORD:     ${{ secrets.QFIELD_PASSWORD }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          PROJECT_ID:          ${{ secrets.PROJECT_ID }}
         run: python notifier.py
