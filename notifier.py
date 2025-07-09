@@ -15,8 +15,13 @@ BASE_URL    = "https://app.qfield.cloud"
 
 
 # ─── 2) Vérification ────────────────────────────────────────
-for var, name in [(EMAIL,"QFIELD_EMAIL"), (PASSWORD,"QFIELD_PASSWORD"),
-                  (WEBHOOK_URL,"DISCORD_WEBHOOK_URL"), (PROJECT_ID,"PROJECT_ID")]:
+
+for var, name in [
+    (LOGIN, "LOGIN"),
+    (PASSWORD, "PASSWORD"),
+    (WEBHOOK_URL, "DISCORD_WEBHOOK_URL"),
+    (PROJECT_ID, "PROJECT_ID")
+]:
     if not var:
         raise SystemExit(f"❌ La variable {name} est manquante")
 
