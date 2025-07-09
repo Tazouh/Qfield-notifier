@@ -1,44 +1,50 @@
-import os, requests
-from datetime import datetime, timedelta
-from qfieldcloud_sdk.sdk import Client
+import os, time, requests
+from datetime import datetime
 
-# 1) Lecture des variables d’environnement
 EMAIL       = os.getenv("QFIELD_EMAIL")
 PASSWORD    = os.getenv("QFIELD_PASSWORD")
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+PROJECT_ID  = os.getenv("PROJECT_ID")
+BASE_URL    = "https://app.qfield.cloud/api/v1"
 
-# 2) PROJECT_ID codé en dur (organisation/slug)
-PROJECT_ID  = "valentinctr/PR4-43"
-
-# 3) Base URL avec slash final
-BASE_URL    = "https://app.qfield.cloud/api/v1/"
-
-# 4) Vérification
 if not all([EMAIL, PASSWORD, WEBHOOK_URL, PROJECT_ID]):
-    raise SystemExit("❌ Il manque une variable d’environnement")
+    raise SystemExit("❌ Variables d’environnement manquantes")
 
-# 5) Authentification via le SDK
-client = Client(url=BASE_URL)
-client.login(EMAIL, PASSWORD)
-session = client.session
+session = requests.Session()
 
-# 6) On récupère les changements des 2 dernières minutes
-since = (datetime.utcnow() - timedelta(minutes=2)).isoformat()
-resp = session.get(
-    f"{BASE_URL}projects/{PROJECT_ID}/changes",
-    params={"since": since},
+# Authentification (form data, pas de slash d’excès)
+session.post(
+    f"{BASE_URL}/auth/login",
+    data={"login": EMAIL, "password": PASSWORD},
     timeout=10
-)
-resp.raise_for_status()
-changes = resp.json().get("changes", [])
+).raise_for_status()
 
-# 7) Envoi sur Discord
-for c in changes:
-    content = (
-        f"🔔 **Changement détecté**\n"
-        f"• Feature : `{c['featureId']}`\n"
-        f"• Type    : {c['type']}\n"
-        f"• Par     : {c['user']['name']}\n"
-        f"• À       : {c['timestamp']}"
+last_check = datetime.utcnow().isoformat()
+
+while True:
+    # 1) Récupérer les changements depuis last_check
+    r = session.get(
+        f"{BASE_URL}/projects/{PROJECT_ID}/changes",
+        params={"since": last_check},
+        timeout=10
     )
-    session.post(WEBHOOK_URL, json={"content": content}, timeout=5)
+    r.raise_for_status()
+    changes = r.json().get("changes", [])
+
+    # 2) Pour chaque changement, poster sur Discord
+    for c in changes:
+        msg = (
+            f"🔔 **Changement détecté**\n"
+            f"• Feature : `{c['featureId']}`\n"
+            f"• Type    : {c['type']}\n"
+            f"• Par     : {c['user']['name']}\n"
+            f"• À       : {c['timestamp']}"
+        )
+        session.post(WEBHOOK_URL, json={"content": msg}, timeout=5)
+
+    # 3) Mettre à jour le timestamp
+    if changes:
+        last_check = changes[-1]["timestamp"]
+
+    # 4) Attendre 30 secondes
+    time.sleep(30)
