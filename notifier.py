@@ -12,11 +12,11 @@ BASE_URL    = "https://app.qfield.cloud/api/v1"
 if not all([EMAIL, PASSWORD, WEBHOOK_URL, PROJECT_ID]):
     raise SystemExit("❌ Il manque une variable d’environnement")
 
-# 3) Authentification sur SaaS
+# 3) Authentification (form data, pas de slash final)
 session = requests.Session()
 session.post(
     f"{BASE_URL}/auth/login",
-    json={"login": EMAIL, "password": PASSWORD},
+    data={"login": EMAIL, "password": PASSWORD},
     timeout=10
 ).raise_for_status()
 
