@@ -1,4 +1,4 @@
-name: QField→Discord Polling
+name: QField-Discord Polling
 
 on:
   schedule:
@@ -9,14 +9,21 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with: python-version: '3.x'
-      - run: pip install requests
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install requests
+
       - name: Run notifier
         env:
-          QFIELD_EMAIL:        ${{ secrets.QFIELD_EMAIL }}
-          QFIELD_PASSWORD:     ${{ secrets.QFIELD_PASSWORD }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          PROJECT_ID:          ${{ secrets.PROJECT_ID }}
+          QFIELD_EMAIL:      ${{ secrets.QFIELD_EMAIL }}
+          QFIELD_PASSWORD:   ${{ secrets.QFIELD_PASSWORD }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.QISCORD_WEBHOOK_URL }}
+          PROJECT_ID:        ${{ secrets.PROJECT_ID }}
         run: python notifier.py
